@@ -3,11 +3,10 @@ module ExpectedBehavior
     module AssociationOperation
 
       class Base
-        attr_reader :model, :head_archive_number
+        attr_reader :model
 
-        def initialize(model, head_archive_number)
+        def initialize(model)
           @model = model
-          @head_archive_number = head_archive_number
         end
 
         def execute

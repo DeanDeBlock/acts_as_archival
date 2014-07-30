@@ -18,9 +18,8 @@ module ExpectedBehavior
           before_validation :raise_if_not_archival
           validate :readonly_when_archived if options[:readonly_when_archived]
 
-          scope :archived, lambda { where %Q{#{self.table_name}.archived_at IS NOT NULL AND #{self.table_name}.archive_number IS NOT NULL} }
-          scope :unarchived, lambda { where(:archived_at => nil, :archive_number => nil) }
-          scope :archived_from_archive_number, lambda { |head_archive_number| where(['archived_at IS NOT NULL AND archive_number = ?', head_archive_number]) }
+          scope :archived, lambda { where(:archived => true) }
+          scope :unarchived, lambda { where(:archived => false) }
 
           callbacks = ['archive','unarchive']
           define_callbacks *[callbacks, {:terminator => lambda { |_, result| result == false }}].flatten
@@ -42,31 +41,28 @@ module ExpectedBehavior
     module InstanceMethods
 
       def readonly_when_archived
-        if self.archived? && self.changed? && !self.archived_at_changed? && !self.archive_number_changed?
+        if self.archived? && self.changed? && !self.archived_changed?
           self.errors.add(:base, "Cannot modify an archived record.")
         end
       end
 
       def raise_if_not_archival
         missing_columns = []
-        missing_columns << "archive_number" unless self.respond_to?(:archive_number)
-        missing_columns << "archived_at" unless self.respond_to?(:archived_at)
+        missing_columns << "archived" unless self.respond_to?(:archived)
         raise MissingArchivalColumnError.new("Add '#{missing_columns.join "', '"}' column(s) to '#{self.class.name}' to make it archival") unless missing_columns.blank?
       end
 
       def archived?
-        self.archived_at? && self.archive_number
+        self.archived
       end
 
-      def archive(head_archive_number=nil)
+      def archive
         self.class.transaction do
           begin
             run_callbacks :archive do
               unless self.archived?
-                head_archive_number ||= Digest::MD5.hexdigest("#{self.class.name}#{self.id}")
-                self.archive_associations(head_archive_number)
-                self.archived_at = DateTime.now
-                self.archive_number = head_archive_number
+                self.archive_associations
+                self.archived = true
                 self.save!
               end
             end
@@ -80,16 +76,14 @@ module ExpectedBehavior
         false
       end
 
-      def unarchive(head_archive_number=nil)
+      def unarchive
         self.class.transaction do
           begin
             run_callbacks :unarchive do
               if self.archived?
-                head_archive_number ||= self.archive_number
-                self.archived_at = nil
-                self.archive_number = nil
+                self.archived = false
                 self.save!
-                self.unarchive_associations(head_archive_number)
+                self.unarchive_associations
               end
             end
             return true
@@ -102,12 +96,12 @@ module ExpectedBehavior
         false
       end
 
-      def archive_associations(head_archive_number)
-        AssociationOperation::Archive.new(self, head_archive_number).execute
+      def archive_associations
+        AssociationOperation::Archive.new(self).execute
       end
 
-      def unarchive_associations(head_archive_number)
-        AssociationOperation::Unarchive.new(self, head_archive_number).execute
+      def unarchive_associations
+        AssociationOperation::Unarchive.new(self).execute
       end
     end
   end
