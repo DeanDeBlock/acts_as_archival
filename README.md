@@ -6,9 +6,7 @@ We had the problem that acts_as_paranoid and similar plugins/gems
 always work on a record-by-record basis and made it very difficult to
 restore records atomically (or archive them, for that matter).
 
-Because the archive and unarchive methods are in transactions, and
-every archival record involved gets the same archive number upon
-archiving, you can easily restore or remove an entire set of records
+Because the archive and unarchive methods are in transactions you can easily restore or remove an entire set of records
 without having to worry about partial deletion or restoration.
 
 Additionally, other plugins generally screw with how
@@ -21,9 +19,9 @@ Gemfile:
 
 `gem "acts_as_archival"`
 
-Any models you want to be archival should have the columns `archive_number` (String) and `archived_at` (DateTime).
+Any models you want to be archival should have the column `archived` (Boolean).
 
-i.e. `rails g migration AddAAAToPost archive_number archived_at:datetime`
+i.e. `rails g migration AddAAAToPost archived:boolean`
 
 Any dependent-destroy AAA model associated to an AAA model will be archived with its parent.
 
@@ -48,9 +46,7 @@ end
 h = Hole.create                  #
 h.archived?                      # => false
 h.archive                        # => true
-h.archived?                      # => "b56876de48a5dcfe71b2c13eec15e4a2"
-h.archive_number                 # => "b56876de48a5dcfe71b2c13eec15e4a2"
-h.archived_at                    # => Thu, 01 Jan 2012 01:49:21 -0400
+h.archived?                      # => true
 h.unarchive                      # => true
 h.archived?                      # => false
 h.archive_number                 # => nil
@@ -63,12 +59,11 @@ h.archived_at                    # => nil
 h = Hole.create                  #
 r = h.rats.create                #
 h.archive                        # => true
-h.archive_number                 # => "b56876de48a5dcfe71b2c13eec15e4a2"
-r.archive_number                 # => "b56876de48a5dcfe71b2c13eec15e4a2"
-r.archived?                      # => "b56876de48a5dcfe71b2c13eec15e4a2"
+h.archived?                      # => true
+r.archived?                      # => true
 h.unarchive                      # => true
-h.archive_number                 # => nil
-r.archive_number                 # => nil
+h.archived?                      # => false
+r.archived?                      # => false
 r.archived?                      # => false
 ```
 
