@@ -9,14 +9,13 @@ class DeepNestingTest < ActiveSupport::TestCase
     assert archival.reload.archived?
     assert child.reload.archived?
     assert grandchild.reload.archived?
-    assert_equal archival.archive_number, child.archive_number
-    assert_equal archival.archive_number, grandchild.archive_number
+    assert_equal archival.archived, child.archived
+    assert_equal archival.archived, grandchild.archived
   end
 
   test "unarchiving deeply nested items doesn't blow up" do
     archival_attributes = {
-      :archived_at => Time.now,
-      :archive_number => "test"
+      :archived => true
     }
     archival   = Archival.create!(archival_attributes)
     child      = archival.archivals.create!(archival_attributes)
